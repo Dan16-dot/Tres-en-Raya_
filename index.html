@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tres en Raya (Tic-Tac-Toe)</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Personalización de la fuente Inter */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            /* Base: Light Mode Cell Styles */
+            background-color: #f0f0f0; 
+            border: 4px solid #cccccc; 
+            transition: background-color 0.2s;
+            cursor: pointer;
+            user-select: none;
+            font-size: 3rem;
+            color: #1a73e8; /* Default color (will be overridden by X/O) */
+            aspect-ratio: 1 / 1;
+        }
+
+        /* Dark Mode Overrides for Cells */
+        .dark .cell {
+            background-color: #161b22; 
+            border: 4px solid #21262d; 
+        }
+
+        /* Light Mode Hover */
+        .cell:hover:not([data-value]) {
+            background-color: #e0e0e0;
+        }
+
+        /* Dark Mode Hover Override */
+        .dark .cell:hover:not([data-value]) {
+            background-color: #21262d; 
+        }
+
+        /* X and O colors (High contrast, same for both modes) */
+        .symbol-x {
+            color: #f85149; /* Rojo para X */
+            text-shadow: 0 0 10px rgba(248, 81, 73, 0.5);
+        }
+        .symbol-o {
+            color: #58a6ff; /* Azul para O */
+            text-shadow: 0 0 10px rgba(88, 166, 255, 0.5);
+        }
+    </style>
+</head>
+<!-- Las clases bg-white y dark:bg-[#0d1117] aseguran que el fondo del body cambie completamente -->
+<body class="min-h-screen flex items-center justify-center p-4 bg-white dark:bg-[#0d1117]">
+
+    <div id="game-container" class="w-full max-w-lg p-6 rounded-xl shadow-2xl transition-all duration-300 bg-gray-100 dark:bg-[#161b22]">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-900 dark:text-gray-100">Juego de Tres en Raya</h1>
+
+        <!-- Sección de Ingreso de Nombres (Visible al inicio) -->
+        <div id="name-input" class="p-4 border rounded-lg border-gray-300 dark:border-gray-700">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-200">Ingresa los Nombres y Ajustes</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for="player1-name" class="block text-sm font-medium mb-1 text-gray-600 dark:text-gray-400">Jugador 1 (X)</label>
+                    <input type="text" id="player1-name" value="Jugador X" class="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700" placeholder="Nombre de Jugador X" required>
+                </div>
+                <div>
+                    <label for="player2-name" class="block text-sm font-medium mb-1 text-gray-600 dark:text-gray-400">Jugador 2 (O)</label>
+                    <input type="text" id="player2-name" value="Jugador O" class="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700" placeholder="Nombre de Jugador O" required>
+                </div>
+
+                <!-- Selector de Tema (Nuevo) -->
+                <div>
+                    <label for="theme-selector" class="block text-sm font-medium mb-1 text-gray-600 dark:text-gray-400">Seleccionar Tema</label>
+                    <select id="theme-selector" onchange="handleThemeChange(this.value)" class="w-full px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 border-gray-300 dark:bg-gray-800 dark:text-white dark:border-gray-700">
+                        <option value="system">Sistema</option>
+                        <option value="dark">Oscuro</option>
+                        <option value="light">Claro</option>
+                    </select>
+                </div>
+
+                <button onclick="startGame()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition duration-150 shadow-md shadow-blue-500/50">
+                    Comenzar Juego
+                </button>
+            </div>
+        </div>
+
+        <!-- Interfaz del Juego (Oculta al inicio) -->
+        <div id="game-interface" class="hidden">
+            <!-- Marcador de Turno -->
+            <div id="status-message" class="text-xl font-semibold text-center mb-4 p-3 rounded-lg shadow-inner text-gray-800 bg-gray-200 dark:text-gray-200 dark:bg-gray-800">
+                Turno de: <span id="current-player-name" class="font-extrabold text-blue-500"></span>
+            </div>
+
+            <!-- Tablero de Tres en Raya -->
+            <div id="game-board" class="grid grid-cols-3 gap-3 rounded-xl p-3 bg-gray-200 dark:bg-[#161b22]">
+                <!-- Las celdas se generarán en JavaScript -->
+            </div>
+
+            <!-- Botón de Reinicio -->
+            <button onclick="resetGame()" class="w-full mt-6 bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition duration-150 shadow-md">
+                Reiniciar (Cambiar Nombres)
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Resultados (Overlay) -->
+    <div id="result-modal" class="fixed inset-0 bg-black bg-opacity-70 hidden items-center justify-center p-4 z-50">
+        <div class="p-8 rounded-xl shadow-3xl max-w-sm w-full text-center border-t-4 border-blue-500 bg-white dark:bg-gray-800">
+            <h3 id="modal-title" class="text-2xl font-bold mb-4 text-gray-900 dark:text-white"></h3>
+            <p id="modal-message" class="text-lg mb-6 whitespace-pre-line text-gray-600 dark:text-gray-300"></p>
+            <button onclick="hideResultModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition duration-150">
+                Jugar de Nuevo
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales del juego
+        let board;
+        let players = {};
+        let currentPlayer; // 'X' o 'O'
+        let gameActive = false; // Indica si el juego está en curso
+        let turnCount = 0;
+        const WINNING_COMBINATIONS = [
+            [0, 1, 2], [3, 4, 5], [6, 7, 8], // Filas
+            [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columnas
+            [0, 4, 8], [2, 4, 6]            // Diagonales
+        ];
+
+        // Referencias a elementos del DOM
+        const gameBoard = document.getElementById('game-board');
+        const statusMessage = document.getElementById('status-message');
+        const nameInputSection = document.getElementById('name-input');
+        const gameInterface = document.getElementById('game-interface');
+        const resultModal = document.getElementById('result-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const themeSelector = document.getElementById('theme-selector'); // Referencia al nuevo selector
+
+        /**
+         * Aplica el tema seleccionado al elemento HTML y guarda la preferencia.
+         * @param {string} theme - 'light', 'dark', o 'system'.
+         */
+        function applyTheme(theme) {
+            // Determina si se debe aplicar el modo oscuro
+            // window.matchMedia('(prefers-color-scheme: dark)').matches verifica la preferencia del sistema operativo
+            const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            
+            if (isDark) {
+                // Aplica la clase 'dark' al elemento HTML, lo que activa todos los estilos dark:
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            
+            // Guardar la preferencia en localStorage
+            localStorage.setItem('theme', theme);
+        }
+
+        /**
+         * Carga el tema guardado o el del sistema al iniciar.
+         */
+        function loadTheme() {
+            let savedTheme = localStorage.getItem('theme');
+            
+            if (!savedTheme) {
+                // Si no hay tema guardado, usa el sistema por defecto
+                savedTheme = 'system';
+            }
+            
+            // Sincronizar el selector de tema en la UI
+            if (themeSelector) {
+                themeSelector.value = savedTheme;
+            }
+            
+            // Aplicar el tema
+            applyTheme(savedTheme);
+
+            // Escuchar cambios en la preferencia del sistema si el tema es 'system'
+            if (savedTheme === 'system') {
+                // Almacenamos el listener para evitar duplicados si se llama loadTheme varias veces
+                window.systemThemeListener = (e) => applyTheme('system');
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', window.systemThemeListener);
+            }
+        }
+
+        /**
+         * Maneja el cambio de tema desde el selector.
+         * @param {string} theme - 'light', 'dark', o 'system'.
+         */
+        window.handleThemeChange = function(theme) {
+            applyTheme(theme);
+            
+            // Si previamente se estaba en modo sistema, eliminamos el listener
+            if (window.systemThemeListener) {
+                window.matchMedia('(prefers-color-scheme: dark)').removeEventListener('change', window.systemThemeListener);
+                delete window.systemThemeListener;
+            }
+
+            // Si se vuelve a seleccionar 'system', lo volvemos a agregar
+            if (theme === 'system') {
+                 window.systemThemeListener = (e) => applyTheme('system');
+                 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', window.systemThemeListener);
+            }
+        }
+
+        /**
+         * Inicializa el tablero y los listeners de las celdas.
+         */
+        function initializeBoard() {
+            gameBoard.innerHTML = '';
+            board = Array(9).fill(''); // Reinicia el array del tablero
+            
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell', 'rounded-lg', 'font-extrabold');
+                cell.setAttribute('data-index', i);
+                cell.onclick = handleCellClick;
+                gameBoard.appendChild(cell);
+            }
+        }
+
+        /**
+         * Maneja el inicio del juego: toma nombres y muestra la interfaz.
+         */
+        function startGame() {
+            const player1Name = document.getElementById('player1-name').value.trim() || 'Jugador X';
+            const player2Name = document.getElementById('player2-name').value.trim() || 'Jugador O';
+
+            // Configura los jugadores
+            players = {
+                'X': { name: player1Name, symbol: 'X' },
+                'O': { name: player2Name, symbol: 'O' }
+            };
+
+            // Reinicia el estado del juego
+            initializeBoard();
+            currentPlayer = 'X';
+            gameActive = true;
+            turnCount = 0;
+            
+            // Actualiza la UI
+            nameInputSection.classList.add('hidden');
+            gameInterface.classList.remove('hidden');
+            updateStatus(`Turno de: ${players[currentPlayer].name} (${currentPlayer})`);
+        }
+
+        /**
+         * Actualiza el mensaje de estado del juego.
+         * @param {string} message - El mensaje a mostrar.
+         */
+        function updateStatus(message) {
+            statusMessage.innerHTML = message.replace(players['X'].name, `<span class="font-extrabold symbol-x">${players['X'].name}</span>`)
+                                             .replace(players['O'].name, `<span class="font-extrabold symbol-o">${players['O'].name}</span>`);
+        }
+
+        /**
+         * Maneja el clic en una celda del tablero.
+         * @param {Event} event - El evento de clic.
+         */
+        function handleCellClick(event) {
+            const clickedCell = event.target;
+            const clickedCellIndex = parseInt(clickedCell.getAttribute('data-index'));
+
+            // Si la celda ya está ocupada o el juego no está activo, salir
+            if (board[clickedCellIndex] !== '' || !gameActive) {
+                return;
+            }
+
+            // 1. Marcar la celda
+            board[clickedCellIndex] = currentPlayer;
+            clickedCell.innerHTML = currentPlayer;
+            clickedCell.classList.add(currentPlayer === 'X' ? 'symbol-x' : 'symbol-o');
+            clickedCell.removeAttribute('onclick'); // Desactiva el listener para esta celda
+            turnCount++;
+
+            // 2. Verificar si hay un ganador
+            if (checkWinner()) {
+                gameActive = false;
+                displayResult(true);
+                return;
+            }
+
+            // 3. Verificar si hay empate
+            if (turnCount === 9) {
+                gameActive = false;
+                displayResult(false);
+                return;
+            }
+
+            // 4. Cambiar de jugador
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+            updateStatus(`Turno de: ${players[currentPlayer].name} (${currentPlayer})`);
+        }
+
+        /**
+         * Verifica si el jugador actual ha ganado.
+         * @returns {boolean} - true si hay un ganador.
+         */
+        function checkWinner() {
+            for (const combination of WINNING_COMBINATIONS) {
+                const [a, b, c] = combination;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    // Resaltar las celdas ganadoras (se ve bien en ambos modos)
+                    gameBoard.children[a].classList.add('bg-green-700', 'ring-4', 'ring-green-500');
+                    gameBoard.children[b].classList.add('bg-green-700', 'ring-4', 'ring-green-500');
+                    gameBoard.children[c].classList.add('bg-green-700', 'ring-4', 'ring-green-500');
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Muestra el modal con el resultado y la clasificación.
+         * @param {boolean} isWinner - Indica si el juego terminó por victoria (true) o empate (false).
+         */
+        function displayResult(isWinner) {
+            if (isWinner) {
+                const winner = players[currentPlayer];
+                const loserSymbol = currentPlayer === 'X' ? 'O' : 'X';
+                const loser = players[loserSymbol];
+
+                modalTitle.textContent = `¡${winner.name} ha ganado!`;
+                modalMessage.textContent = `
+                    ¡Felicidades por la victoria!
+                    
+                    🏆 Clasificación Final 🏆
+                    
+                    🥇 1er Lugar: ${winner.name} (${winner.symbol})
+                    🥈 2do Lugar: ${loser.name} (${loser.symbol})
+                `;
+            } else {
+                modalTitle.textContent = '¡Ha sido un Empate!';
+                modalMessage.textContent = `
+                    ¡Nadie gana, nadie pierde! Ambos jugadores demostraron gran habilidad.
+
+                    🤝 Clasificación Final (Compartida) 🤝
+                    
+                    🥇 1er Lugar: ${players['X'].name} (X)
+                    🥇 1er Lugar: ${players['O'].name} (O)
+                `;
+                // Resaltar el tablero en caso de empate con clases que se adaptan al tema
+                // Usamos clases adaptativas (bg-yellow-200/50 para claro, dark:bg-yellow-800/50 para oscuro)
+                Array.from(gameBoard.children).forEach(cell => {
+                    cell.classList.add('bg-yellow-200/50', 'dark:bg-yellow-800/50', 'ring-2', 'ring-yellow-500');
+                });
+            }
+            // Muestra el modal
+            resultModal.classList.remove('hidden');
+            resultModal.classList.add('flex');
+            updateStatus('Juego Terminado. ¡Revisa el resultado!');
+        }
+
+        /**
+         * Oculta el modal y prepara el juego para una nueva ronda con los mismos nombres.
+         */
+        function hideResultModal() {
+            resultModal.classList.add('hidden');
+            resultModal.classList.remove('flex');
+            startGame(); // Inicia un nuevo juego con los mismos nombres
+        }
+
+        /**
+         * Reinicia completamente el juego, volviendo a la pantalla de nombres.
+         */
+        function resetGame() {
+            gameActive = false;
+            gameInterface.classList.add('hidden');
+            nameInputSection.classList.remove('hidden');
+            // Opcional: limpiar los campos de nombre
+            // document.getElementById('player1-name').value = 'Jugador X';
+            // document.getElementById('player2-name').value = 'Jugador O';
+            initializeBoard(); // Limpia el tablero
+        }
+
+        // Inicializa la carga del tema y el tablero al cargar la página
+        window.onload = function() {
+            loadTheme();
+            initializeBoard();
+        };
+    </script>
+</body>
+</html>
